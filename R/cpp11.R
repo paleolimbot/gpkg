@@ -7,3 +7,7 @@ sqlite_cpp_open <- function(filename) {
 sqlite_cpp_close <- function(con_sexp) {
   invisible(.Call(`_narrowsqlite3_sqlite_cpp_close`, con_sexp))
 }
+
+sqlite_cpp_exec <- function(con_sexp, sql) {
+  .Call(`_narrowsqlite3_sqlite_cpp_exec`, con_sexp, sql)
+}

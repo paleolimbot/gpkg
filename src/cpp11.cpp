@@ -20,10 +20,18 @@ extern "C" SEXP _narrowsqlite3_sqlite_cpp_close(SEXP con_sexp) {
     return R_NilValue;
   END_CPP11
 }
+// narrowsqlite3.cpp
+int sqlite_cpp_exec(cpp11::sexp con_sexp, std::string sql);
+extern "C" SEXP _narrowsqlite3_sqlite_cpp_exec(SEXP con_sexp, SEXP sql) {
+  BEGIN_CPP11
+    return cpp11::as_sexp(sqlite_cpp_exec(cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(con_sexp), cpp11::as_cpp<cpp11::decay_t<std::string>>(sql)));
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
     {"_narrowsqlite3_sqlite_cpp_close", (DL_FUNC) &_narrowsqlite3_sqlite_cpp_close, 1},
+    {"_narrowsqlite3_sqlite_cpp_exec",  (DL_FUNC) &_narrowsqlite3_sqlite_cpp_exec,  2},
     {"_narrowsqlite3_sqlite_cpp_open",  (DL_FUNC) &_narrowsqlite3_sqlite_cpp_open,  1},
     {NULL, NULL, 0}
 };
