@@ -8,6 +8,7 @@
 \alias{sqlite3_query_narrow}
 \alias{sqlite3_query_table}
 \alias{sqlite3_open_test}
+\alias{sqlite3_list_tables}
 \title{SQLite3 Interface}
 \usage{
 sqlite3_open(file = ":memory:")
@@ -23,6 +24,8 @@ sqlite3_query_narrow(con, sql)
 sqlite3_query_table(con, sql)
 
 sqlite3_open_test()
+
+sqlite3_list_tables(con)
 }
 \arguments{
 \item{file}{A filename or :memory: for an in-memory database.}

@@ -42,7 +42,22 @@ test_that("sqlite_query() can read to data.frame", {
   )
 })
 
-test_that("sqlite_query() can read to RecordBatch", {
+test_that("sqlite_query() can read to data.frame with zero rows", {
+  con <- sqlite3_open_test()
+  on.exit(sqlite3_close(con))
+
+  expect_identical(
+    sqlite3_query(con, "SELECT * from crossfit WHERE 0"),
+    data.frame(
+      exercise = character(),
+      # probs should be integer
+      difficulty_level = character(),
+      stringsAsFactors = FALSE
+    )
+  )
+})
+
+test_that("sqlite3_query_table() can read to Table", {
   con <- sqlite3_open_test()
   on.exit(sqlite3_close(con))
 
@@ -54,5 +69,14 @@ test_that("sqlite_query() can read to RecordBatch", {
       stringsAsFactors = FALSE
     )
   )
+})
+
+test_that("sqlite3_list_tables() lists tables", {
+  con <- sqlite3_open()
+  expect_identical(sqlite3_list_tables(con), character())
+
+  con <- sqlite3_open_test()
+  on.exit(sqlite3_close(con))
+  expect_identical(sqlite3_list_tables(con), "crossfit")
 })
 

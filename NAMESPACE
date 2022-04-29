@@ -2,6 +2,7 @@
 
 export(sqlite3_close)
 export(sqlite3_exec)
+export(sqlite3_list_tables)
 export(sqlite3_open)
 export(sqlite3_open_test)
 export(sqlite3_query)

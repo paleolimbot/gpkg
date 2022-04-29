@@ -68,3 +68,12 @@ sqlite3_open_test <- function() {
 
   con
 }
+
+#' @rdname sqlite3_open
+#' @export
+sqlite3_list_tables <- function(con) {
+  sqlite3_query(
+    con,
+    "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
+  )$name
+}

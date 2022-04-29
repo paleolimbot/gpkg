@@ -252,6 +252,10 @@ public:
   }
 
   int step_row() {
+    if (status_ == SQLITE_DONE) {
+      return status_;
+    }
+
     int n_columns = builder_->num_children();
     for (int i = 0; i < n_columns; i++) {
       builder_->child(i)->append_stmt(stmt(), i);
