@@ -4,6 +4,8 @@
 \alias{sqlite3_open}
 \alias{sqlite3_close}
 \alias{sqlite3_exec}
+\alias{sqlite3_query}
+\alias{sqlite3_query_narrow}
 \alias{sqlite3_open_test}
 \title{SQLite3 Interface}
 \usage{
@@ -12,6 +14,10 @@ sqlite3_open(file = ":memory:")
 sqlite3_close(con)
 
 sqlite3_exec(con, sql)
+
+sqlite3_query(con, sql)
+
+sqlite3_query_narrow(con, sql)
 
 sqlite3_open_test()
 }

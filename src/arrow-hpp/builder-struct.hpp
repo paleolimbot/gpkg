@@ -25,12 +25,6 @@ public:
   int64_t num_children() { return children_.size(); }
 
   void set_size(int64_t size) {
-    if (num_children() > 0 && size != size_) {
-      throw util::Exception(
-        "Attempt to resize a StructArrayBuilder from %lld to %lld",
-        size_, size);
-    }
-
     size_ = size;
   }
 
@@ -61,13 +55,13 @@ public:
     for (int64_t i = 0; i < num_children(); i++) {
       children_[i]->release(
         finalizer.array_data.children[i],
-        finalizer.schema.children[i]);
+        finalizer.schema->children[i]);
     }
 
     finalizer.release(array_data, schema);
   }
 
-private:
+protected:
   std::vector<std::unique_ptr<ArrayBuilder>> children_;
 };
 

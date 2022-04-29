@@ -11,3 +11,7 @@ sqlite_cpp_close <- function(con_sexp) {
 sqlite_cpp_exec <- function(con_sexp, sql) {
   .Call(`_narrowsqlite3_sqlite_cpp_exec`, con_sexp, sql)
 }
+
+sqlite_cpp_query_all <- function(con_sexp, sql, array_data_xptr, schema_xptr) {
+  invisible(.Call(`_narrowsqlite3_sqlite_cpp_query_all`, con_sexp, sql, array_data_xptr, schema_xptr))
+}

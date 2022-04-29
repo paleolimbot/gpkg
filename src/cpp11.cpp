@@ -27,12 +27,21 @@ extern "C" SEXP _narrowsqlite3_sqlite_cpp_exec(SEXP con_sexp, SEXP sql) {
     return cpp11::as_sexp(sqlite_cpp_exec(cpp11::as_cpp<cpp11::decay_t<cpp11::sexp>>(con_sexp), cpp11::as_cpp<cpp11::decay_t<std::string>>(sql)));
   END_CPP11
 }
+// narrowsqlite3.cpp
+void sqlite_cpp_query_all(sexp con_sexp, std::string sql, sexp array_data_xptr, sexp schema_xptr);
+extern "C" SEXP _narrowsqlite3_sqlite_cpp_query_all(SEXP con_sexp, SEXP sql, SEXP array_data_xptr, SEXP schema_xptr) {
+  BEGIN_CPP11
+    sqlite_cpp_query_all(cpp11::as_cpp<cpp11::decay_t<sexp>>(con_sexp), cpp11::as_cpp<cpp11::decay_t<std::string>>(sql), cpp11::as_cpp<cpp11::decay_t<sexp>>(array_data_xptr), cpp11::as_cpp<cpp11::decay_t<sexp>>(schema_xptr));
+    return R_NilValue;
+  END_CPP11
+}
 
 extern "C" {
 static const R_CallMethodDef CallEntries[] = {
-    {"_narrowsqlite3_sqlite_cpp_close", (DL_FUNC) &_narrowsqlite3_sqlite_cpp_close, 1},
-    {"_narrowsqlite3_sqlite_cpp_exec",  (DL_FUNC) &_narrowsqlite3_sqlite_cpp_exec,  2},
-    {"_narrowsqlite3_sqlite_cpp_open",  (DL_FUNC) &_narrowsqlite3_sqlite_cpp_open,  1},
+    {"_narrowsqlite3_sqlite_cpp_close",     (DL_FUNC) &_narrowsqlite3_sqlite_cpp_close,     1},
+    {"_narrowsqlite3_sqlite_cpp_exec",      (DL_FUNC) &_narrowsqlite3_sqlite_cpp_exec,      2},
+    {"_narrowsqlite3_sqlite_cpp_open",      (DL_FUNC) &_narrowsqlite3_sqlite_cpp_open,      1},
+    {"_narrowsqlite3_sqlite_cpp_query_all", (DL_FUNC) &_narrowsqlite3_sqlite_cpp_query_all, 4},
     {NULL, NULL, 0}
 };
 }

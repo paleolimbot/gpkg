@@ -8,6 +8,14 @@
 \description{
 Provides a proof-of-concept converter that takes a SQLite3 query and returns an ArrowArrayStream.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/paleolimbot/narrowsqlite3}
+  \item Report bugs at \url{https://github.com/paleolimbot/narrowsqlite3/issues}
+}
+
+}
 \author{
 \strong{Maintainer}: Dewey Dunnington \email{dewey@fishandwhistle.net} (\href{https://orcid.org/0000-0002-9415-4582}{ORCID})
 
