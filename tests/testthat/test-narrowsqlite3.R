@@ -28,7 +28,7 @@ test_that("sqlite_query() errors for invalid SQL", {
   expect_error(sqlite3_query(con, "not sql"), "SQL logic error")
 })
 
-test_that("sqlite_query() can read a schema", {
+test_that("sqlite_query() can read to data.frame", {
   con <- sqlite3_open_test()
   on.exit(sqlite3_close(con))
 
@@ -36,10 +36,23 @@ test_that("sqlite_query() can read a schema", {
     sqlite3_query(con, "SELECT * from crossfit"),
     data.frame(
       exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
-      difficulty_level = c("3", "5", "7", "10"),
+      difficulty_level = c(3L, 5L, 7L, 10L),
       stringsAsFactors = FALSE
     )
   )
 })
 
+test_that("sqlite_query() can read to RecordBatch", {
+  con <- sqlite3_open_test()
+  on.exit(sqlite3_close(con))
+
+  expect_identical(
+    as.data.frame(as.data.frame(sqlite3_query_table(con, "SELECT * from crossfit"))),
+    data.frame(
+      exercise = c("Push Ups", "Pull Ups", "Push Jerk", "Bar Muscle Up"),
+      difficulty_level = c(3L, 5L, 7L, 10L),
+      stringsAsFactors = FALSE
+    )
+  )
+})
 

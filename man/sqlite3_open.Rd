@@ -6,6 +6,7 @@
 \alias{sqlite3_exec}
 \alias{sqlite3_query}
 \alias{sqlite3_query_narrow}
+\alias{sqlite3_query_table}
 \alias{sqlite3_open_test}
 \title{SQLite3 Interface}
 \usage{
@@ -18,6 +19,8 @@ sqlite3_exec(con, sql)
 sqlite3_query(con, sql)
 
 sqlite3_query_narrow(con, sql)
+
+sqlite3_query_table(con, sql)
 
 sqlite3_open_test()
 }

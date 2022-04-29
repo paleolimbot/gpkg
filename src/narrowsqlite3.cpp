@@ -99,9 +99,10 @@ private:
   std::string decl_type_;
 };
 
-class SQLite3StringBuilder: public SQLite3ColumnBuilder {
+template<typename BuilderT>
+class SQLite3GenericStringBuilder: public SQLite3ColumnBuilder {
 public:
-  SQLite3StringBuilder(): builder_(new arrow::hpp::builder::StringArrayBuilder()) {}
+  SQLite3GenericStringBuilder(): builder_(new BuilderT()) {}
 
   void append_null() {
     builder_->finish_element(false);
@@ -119,15 +120,64 @@ public:
     builder_->set_name(name());
     builder_->shrink();
     builder_->release(array_data, schema);
+    builder_->set_metadata("R_NARROWSQLITE3:decltype", decl_type());
 
-    builder_ = std::unique_ptr<arrow::hpp::builder::StringArrayBuilder>(
-      new arrow::hpp::builder::StringArrayBuilder()
+    builder_ = std::unique_ptr<BuilderT>(
+      new BuilderT()
     );
   }
 
 private:
-  std::unique_ptr<arrow::hpp::builder::StringArrayBuilder> builder_;
+  std::unique_ptr<BuilderT> builder_;
 };
+
+template<typename BuilderT>
+class SQLite3NumericBuilder: public SQLite3ColumnBuilder {
+public:
+  SQLite3NumericBuilder(): builder_(new BuilderT()) {}
+
+  void append_null() {
+    builder_->write_element(0, false);
+    size_++;
+  }
+
+  bool append_integer(int64_t value) {
+    builder_->write_element(value);
+    return true;
+  }
+
+  bool append_float(double value) {
+    builder_->write_element(value);
+    return true;
+  }
+
+  bool append_blob(const unsigned char* value, int64_t size) {
+    throw SQLite3Error("Can't write numeric from SQLITE_BLOB");
+  }
+
+  bool append_text(const unsigned char* value, int64_t size) {
+    throw SQLite3Error("Can't write numeric from SQLITE_TEXT");
+  }
+
+  void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
+    builder_->set_name(name());
+    builder_->set_metadata("R_NARROWSQLITE3:decltype", decl_type());
+    builder_->shrink();
+    builder_->release(array_data, schema);
+
+    builder_ = std::unique_ptr<BuilderT>(
+      new BuilderT()
+    );
+  }
+
+private:
+  std::unique_ptr<BuilderT> builder_;
+};
+
+using SQLite3Int32Builder= SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using SQLite3Float64Builder= SQLite3NumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
+using SQLite3BinaryBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::BinaryArrayBuilder>;
+using SQLite3StringBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
 
 class SQLite3StructBuilder: public arrow::hpp::builder::StructArrayBuilder {
 public:
@@ -138,7 +188,23 @@ public:
 
 std::unique_ptr<SQLite3ColumnBuilder> MakeColumnBuilder(const char* decl_type,
                                                         int first_value_type) {
-  auto builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3StringBuilder());
+  std::unique_ptr<SQLite3ColumnBuilder> builder;
+  switch (first_value_type) {
+  case SQLITE_INTEGER:
+    // int32 for prototype; narrow doesn't define a conversion from int64_t to R
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3Int32Builder());
+    break;
+  case SQLITE_FLOAT:
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3Float64Builder());
+    break;
+  case SQLITE_BLOB:
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3BinaryBuilder());
+    break;
+  default:
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3StringBuilder());
+    break;
+  }
+
   builder->set_decl_type(decl_type);
   return builder;
 }
@@ -158,42 +224,8 @@ public:
     }
   }
 
-  sqlite3_stmt* stmt() {
-    if (stmt_.ptr == nullptr) {
-      const char* tail;
-      int result = sqlite3_prepare_v2(con_, sql_.c_str(), sql_.size(), &stmt_.ptr, &tail);
-      if (result != SQLITE_OK) {
-        std::stringstream stream;
-        stream << "<" << sqlite3_errstr(result) << "> " << sqlite3_errmsg(con_);
-        throw SQLite3Error(stream.str().c_str());
-      }
-    }
-
-    return stmt_.ptr;
-  }
-
-  int step() {
-    int result = sqlite3_step(stmt());
-    switch (result) {
-    case SQLITE_DONE:
-    case SQLITE_ROW:
-      status_ = result;
-      return result;
-    default:
-      break;
-    }
-
-    std::stringstream stream;
-    stream << sqlite3_errstr(result) << sqlite3_errmsg(con_);
-    throw SQLite3Error(stream.str().c_str());
-  }
-
-  bool eval_started() { return status_ == SQLITE_DONE || status_ == SQLITE_ROW; }
-
-  void init_builders_and_schema() {
-    if (!eval_started()) {
-      step();
-    }
+  int step_first() {
+    int result = step();
 
     this->builder_ = std::unique_ptr<SQLite3StructBuilder>(
       new SQLite3StructBuilder()
@@ -215,17 +247,21 @@ public:
     struct ArrowArray dummy_array_data;
     dummy_array_data.release = nullptr;
     builder_->release(&dummy_array_data, &schema_);
+
+    return result;
   }
 
-  void read_row() {
+  int step_row() {
     int n_columns = builder_->num_children();
     for (int i = 0; i < n_columns; i++) {
       builder_->child(i)->append_stmt(stmt(), i);
     }
     builder_->set_size(builder_->size() + 1);
+
+    return step();
   }
 
-  void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
+  void release_batch(struct ArrowArray* array_data, struct ArrowSchema* schema) {
     builder_->release(array_data, schema);
   }
 
@@ -238,6 +274,36 @@ private:
 
   std::unique_ptr<SQLite3StructBuilder> builder_;
   struct ArrowSchema schema_;
+
+  int step() {
+    int result = sqlite3_step(stmt());
+    switch (result) {
+    case SQLITE_DONE:
+    case SQLITE_ROW:
+      status_ = result;
+      return result;
+    default:
+      break;
+    }
+
+    std::stringstream stream;
+    stream << sqlite3_errstr(result) << sqlite3_errmsg(con_);
+    throw SQLite3Error(stream.str().c_str());
+  }
+
+  sqlite3_stmt* stmt() {
+    if (stmt_.ptr == nullptr) {
+      const char* tail;
+      int result = sqlite3_prepare_v2(con_, sql_.c_str(), sql_.size(), &stmt_.ptr, &tail);
+      if (result != SQLITE_OK) {
+        std::stringstream stream;
+        stream << "<" << sqlite3_errstr(result) << "> " << sqlite3_errmsg(con_);
+        throw SQLite3Error(stream.str().c_str());
+      }
+    }
+
+    return stmt_.ptr;
+  }
 };
 
 [[cpp11::register]]
@@ -285,9 +351,16 @@ void sqlite_cpp_query_all(sexp con_sexp, std::string sql,
   );
 
   SQLite3ArrayStreamHolder holder(con_sexp, sql);
-  holder.init_builders_and_schema();
+  holder.step_first();
+  int result;
+  int64_t i = 0;
   do {
-    holder.read_row();
-  } while (holder.step() != SQLITE_DONE);
-  holder.release(array_data_out, schema_out);
+    result = holder.step_row();
+    i++;
+    if ((i % 1000) == 0) {
+      check_user_interrupt();
+    }
+  } while (result != SQLITE_DONE);
+
+  holder.release_batch(array_data_out, schema_out);
 }

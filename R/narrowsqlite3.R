@@ -46,6 +46,16 @@ sqlite3_query_narrow <- function(con, sql) {
 
 #' @rdname sqlite3_open
 #' @export
+sqlite3_query_table <- function(con, sql) {
+  batch <- narrow::from_narrow_array(
+    sqlite3_query_narrow(con, sql),
+    arrow::RecordBatch
+  )
+  arrow::arrow_table(batch)
+}
+
+#' @rdname sqlite3_open
+#' @export
 sqlite3_open_test <- function() {
   con <- sqlite3_open()
   sqlite3_exec(

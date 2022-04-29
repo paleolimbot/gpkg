@@ -438,13 +438,15 @@ public:
     buffer_builder_.shrink();
   }
 
-  void write_element(BufferT value) {
+  void write_element(BufferT value, bool not_null = true) {
     buffer_builder_.write_element(value);
+    validity_buffer_builder_.write_element(not_null);
     size_++;
   }
 
-  void write_buffer(const double* buffer, int64_t n) {
+  void write_buffer(const BufferT* buffer, int64_t n, bool not_null = true) {
     buffer_builder_.write_buffer(buffer, n);
+    validity_buffer_builder_.write_elements(n, not_null);
     size_+= n;
   }
 
@@ -472,6 +474,11 @@ private:
 class Float64ArrayBuilder: public FixedSizeLayoutArrayBuilder<double> {
 public:
   virtual const char* get_format() { return "g"; }
+};
+
+class Int32ArrayBuilder: public FixedSizeLayoutArrayBuilder<int32_t> {
+public:
+  virtual const char* get_format() { return "i"; }
 };
 
 }
