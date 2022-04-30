@@ -118,9 +118,9 @@ public:
 
   void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
     builder_->set_name(name());
+    builder_->set_metadata("R_NARROWSQLITE3:decltype", decl_type());
     builder_->shrink();
     builder_->release(array_data, schema);
-    builder_->set_metadata("R_NARROWSQLITE3:decltype", decl_type());
 
     builder_ = std::unique_ptr<BuilderT>(
       new BuilderT()
