@@ -2,63 +2,63 @@
 #' SQLite3 Interface
 #'
 #' @param file A filename or :memory: for an in-memory database.
-#' @param con A connection opened using [sqlite3_open()]
+#' @param con A connection opened using [gpkg_open()]
 #' @param sql An SQL statement
 #'
 #' @export
 #'
-sqlite3_open <- function(file = ":memory:") {
-  structure(sqlite_cpp_open(file), class = "gpkg_con")
+gpkg_open <- function(file = ":memory:") {
+  structure(gpkg_cpp_open(file), class = "gpkg_con")
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_close <- function(con) {
-  sqlite_cpp_close(con)
+gpkg_close <- function(con) {
+  gpkg_cpp_close(con)
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_exec <- function(con, sql) {
+gpkg_exec <- function(con, sql) {
   stopifnot(inherits(con, "gpkg_con"))
   sql <- paste(sql, collapse = ";")
-  sqlite_cpp_exec(con, sql)
+  gpkg_cpp_exec(con, sql)
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_query <- function(con, sql) {
+gpkg_query <- function(con, sql) {
   narrow::from_narrow_array(
-    sqlite3_query_narrow(con, sql)
+    gpkg_query_narrow(con, sql)
   )
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_query_narrow <- function(con, sql) {
+gpkg_query_narrow <- function(con, sql) {
   stopifnot(inherits(con, "gpkg_con"))
   array_data <- narrow::narrow_allocate_array_data()
   schema <- narrow::narrow_allocate_schema()
 
-  sqlite_cpp_query_all(con, sql, array_data, schema)
+  gpkg_cpp_query_all(con, sql, array_data, schema)
   narrow::narrow_array(schema, array_data)
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_query_table <- function(con, sql) {
+gpkg_query_table <- function(con, sql) {
   batch <- narrow::from_narrow_array(
-    sqlite3_query_narrow(con, sql),
+    gpkg_query_narrow(con, sql),
     arrow::RecordBatch
   )
   arrow::arrow_table(batch)
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_open_test <- function() {
-  con <- sqlite3_open()
-  sqlite3_exec(
+gpkg_open_test <- function() {
+  con <- gpkg_open()
+  gpkg_exec(
     con,
     c(
       "CREATE TABLE crossfit (exercise text,difficulty_level int)",
@@ -69,10 +69,10 @@ sqlite3_open_test <- function() {
   con
 }
 
-#' @rdname sqlite3_open
+#' @rdname gpkg_open
 #' @export
-sqlite3_list_tables <- function(con) {
-  sqlite3_query(
+gpkg_list_tables <- function(con) {
+  gpkg_query(
     con,
     "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
   )$name
