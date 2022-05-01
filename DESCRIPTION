@@ -1,5 +1,5 @@
 Package: gpkg
-Title: Proof of Concept 'SQLite3' to Arrow Converter
+Title: Proof of Concept 'GeoPackage' to Arrow Converter
 Version: 0.0.0.9000
 Authors@R: 
     person(given = "Dewey",
@@ -7,15 +7,14 @@ Authors@R:
              role = c("aut", "cre"),
              email = "dewey@fishandwhistle.net",
              comment = c(ORCID = "0000-0002-9415-4582"))
-Description: Provides a proof-of-concept converter that takes a SQLite3
-  query and returns an ArrowArrayStream.
+Description: Provides a proof-of-concept converter that takes a gpkg
+  query and returns the data using the 'Arrow' C data interface.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.2
 LinkingTo: 
-    cpp11,
-    narrow
+    cpp11
 SystemRequirements: C++11
 Suggests: 
     arrow,

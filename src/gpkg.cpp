@@ -4,8 +4,6 @@ using namespace cpp11;
 
 #include <sstream>
 
-#include <narrow.h>
-
 #define ARROW_HPP_IMPL
 #include "arrow-hpp/builder.hpp"
 #include "arrow-hpp/builder-string.hpp"
