@@ -8,8 +8,8 @@
 [![R-CMD-check](https://github.com/paleolimbot/gpkg/workflows/R-CMD-check/badge.svg)](https://github.com/paleolimbot/gpkg/actions)
 <!-- badges: end -->
 
-The goal of gpkg is to provide a proof-of-concept reader for
-SQLite queries into [Arrow C Data
+The goal of gpkg is to provide a proof-of-concept reader for SQLite
+queries into [Arrow C Data
 interface](https://arrow.apache.org/docs/format/CDataInterface.html)
 structures.
 
@@ -32,21 +32,21 @@ tests):
 ``` r
 library(gpkg)
 
-con <- sqlite3_open()
-sqlite3_exec(con, "CREATE TABLE crossfit (exercise text, difficulty_level int)")
+con <- gpkg_open()
+gpkg_exec(con, "CREATE TABLE crossfit (exercise text, difficulty_level int)")
 #> [1] 0
-sqlite3_exec(con, "INSERT INTO crossfit VALUES ('Push Ups', 3), ('Pull Ups', 5) , ('Push Jerk', 7), ('Bar Muscle Up', 10)")
+gpkg_exec(con, "INSERT INTO crossfit VALUES ('Push Ups', 3), ('Pull Ups', 5) , ('Push Jerk', 7), ('Bar Muscle Up', 10)")
 #> [1] 0
 
 # Query to Table
-sqlite3_query_table(con, "SELECT * from crossfit where difficulty_level >= 5")
+gpkg_query_table(con, "SELECT * from crossfit where difficulty_level >= 5")
 #> Table
 #> 3 rows x 2 columns
 #> $exercise <string>
 #> $difficulty_level <int32>
 
 # ...or directly to data.frame:
-sqlite3_query(con, "SELECT * from crossfit where difficulty_level >= 5")
+gpkg_query(con, "SELECT * from crossfit where difficulty_level >= 5")
 #>        exercise difficulty_level
 #> 1      Pull Ups                5
 #> 2     Push Jerk                7
