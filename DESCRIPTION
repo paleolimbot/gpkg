@@ -1,4 +1,4 @@
-Package: narrowsqlite3
+Package: gpkg
 Title: Proof of Concept 'SQLite3' to Arrow Converter
 Version: 0.0.0.9000
 Authors@R: 
@@ -23,7 +23,7 @@ Suggests:
 Remotes:
     paleolimbot/narrow
 Config/testthat/edition: 3
-URL: https://github.com/paleolimbot/narrowsqlite3
-BugReports: https://github.com/paleolimbot/narrowsqlite3/issues
+URL: https://github.com/paleolimbot/gpkg
+BugReports: https://github.com/paleolimbot/gpkg/issues
 Imports: 
     narrow

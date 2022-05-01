@@ -1,4 +1,4 @@
 library(testthat)
-library(narrowsqlite3)
+library(gpkg)
 
-test_check("narrowsqlite3")
+test_check("gpkg")

@@ -1,7 +1,7 @@
 
 test_that("sqlite3 connections can be opened and closed", {
   con <- sqlite3_open(":memory:")
-  expect_s3_class(con, "narrowsqlite3_con")
+  expect_s3_class(con, "gpkg_con")
   sqlite3_close(con)
 })
 
@@ -17,7 +17,7 @@ test_that("sqlite_exec() executes SQL", {
 })
 
 test_that("sqlite_open_test() returns a connection", {
-  expect_s3_class(sqlite3_open_test(), "narrowsqlite3_con")
+  expect_s3_class(sqlite3_open_test(), "gpkg_con")
 
 })
 

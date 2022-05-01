@@ -2,6 +2,6 @@
 "_PACKAGE"
 
 ## usethis namespace: start
-#' @useDynLib narrowsqlite3, .registration = TRUE
+#' @useDynLib gpkg, .registration = TRUE
 ## usethis namespace: end
 NULL

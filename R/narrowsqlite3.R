@@ -8,7 +8,7 @@
 #' @export
 #'
 sqlite3_open <- function(file = ":memory:") {
-  structure(sqlite_cpp_open(file), class = "narrowsqlite3_con")
+  structure(sqlite_cpp_open(file), class = "gpkg_con")
 }
 
 #' @rdname sqlite3_open
@@ -20,7 +20,7 @@ sqlite3_close <- function(con) {
 #' @rdname sqlite3_open
 #' @export
 sqlite3_exec <- function(con, sql) {
-  stopifnot(inherits(con, "narrowsqlite3_con"))
+  stopifnot(inherits(con, "gpkg_con"))
   sql <- paste(sql, collapse = ";")
   sqlite_cpp_exec(con, sql)
 }
@@ -36,7 +36,7 @@ sqlite3_query <- function(con, sql) {
 #' @rdname sqlite3_open
 #' @export
 sqlite3_query_narrow <- function(con, sql) {
-  stopifnot(inherits(con, "narrowsqlite3_con"))
+  stopifnot(inherits(con, "gpkg_con"))
   array_data <- narrow::narrow_allocate_array_data()
   schema <- narrow::narrow_allocate_schema()
 

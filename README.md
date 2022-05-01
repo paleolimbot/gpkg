@@ -1,26 +1,26 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# narrowsqlite3
+# gpkg
 
 <!-- badges: start -->
 
-[![R-CMD-check](https://github.com/paleolimbot/narrowsqlite3/workflows/R-CMD-check/badge.svg)](https://github.com/paleolimbot/narrowsqlite3/actions)
+[![R-CMD-check](https://github.com/paleolimbot/gpkg/workflows/R-CMD-check/badge.svg)](https://github.com/paleolimbot/gpkg/actions)
 <!-- badges: end -->
 
-The goal of narrowsqlite3 is to provide a proof-of-concept reader for
+The goal of gpkg is to provide a proof-of-concept reader for
 SQLite queries into [Arrow C Data
 interface](https://arrow.apache.org/docs/format/CDataInterface.html)
 structures.
 
 ## Installation
 
-You can install the development version of narrowsqlite3 from
+You can install the development version of gpkg from
 [GitHub](https://github.com/) with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("paleolimbot/narrowsqlite3")
+remotes::install_github("paleolimbot/gpkg")
 ```
 
 ## Example
@@ -30,7 +30,7 @@ This is a basic example which shows you how to solve a common problem
 tests):
 
 ``` r
-library(narrowsqlite3)
+library(gpkg)
 
 con <- sqlite3_open()
 sqlite3_exec(con, "CREATE TABLE crossfit (exercise text, difficulty_level int)")
