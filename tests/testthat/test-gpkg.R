@@ -90,7 +90,7 @@ test_that("gpkg_query_table() can decode the geometry column", {
     wkb <- wk::wkb(unclass(as.data.frame(table)$geom))
     expect_identical(wk::validate_wk_wkb(wkb), wkb)
 
-    array <- gpkg_query_narrow(con, sprintf("SELECT * FROM %s", ex))
+    array <- gpkg_query_narrow(con, sprintf("SELECT * FROM %s", ex))[[1]]
     expect_identical(
       array$schema$children[[2]]$metadata$`ARROW:extension:name`,
       "geoarrow.wkb"

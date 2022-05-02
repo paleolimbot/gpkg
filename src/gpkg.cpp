@@ -3,6 +3,7 @@
 using namespace cpp11;
 
 #include <sstream>
+#include <future>
 
 #define ARROW_HPP_IMPL
 #include "arrow-hpp/builder.hpp"
@@ -454,28 +455,39 @@ int gpkg_cpp_exec(cpp11::sexp con_sexp, std::string sql) {
   return result;
 }
 
-void gpkg_cpp_query_base(sqlite3* con,
-                         const std::string& sql,
-                         struct ArrowArray* array_data_out,
-                         struct ArrowSchema* schema_out) {
-  SQLite3ArrayStreamHolder holder(con, sql);
-  holder.step_first();
-  int result;
-  int64_t i = 0;
-  do {
-    result = holder.step_row();
-    i++;
-    if ((i % 1000) == 0) {
-      check_user_interrupt();
-    }
-  } while (result != SQLITE_DONE);
+std::string gpkg_query(sqlite3* con,
+                       const std::string& sql,
+                       struct ArrowArray* array_data_out,
+                       struct ArrowSchema* schema_out) {
+  try {
+    SQLite3ArrayStreamHolder holder(con, sql);
+    holder.step_first();
+    int result;
+    do {
+      result = holder.step_row();
+    } while (result != SQLITE_DONE);
 
-  holder.release_batch(array_data_out, schema_out);
+    holder.release_batch(array_data_out, schema_out);
+
+    return std::string("");
+  } catch (std::exception& e) {
+    return std::string(e.what());
+  }
 }
 
-[[cpp11::register]]
-void gpkg_cpp_query_all(sexp con_sexp, std::string sql,
-                          sexp array_data_xptr, sexp schema_xptr) {
+std::future<std::string> gpkg_query_async(sqlite3* con,
+                                          const std::string& sql,
+                                          struct ArrowArray* array_data_out,
+                                          struct ArrowSchema* schema_out) {
+  return std::async(
+    std::launch::async,
+    gpkg_query,
+    con, sql, array_data_out, schema_out
+  );
+}
+
+std::future<std::string> gpkg_query_async_sexp(sexp con_sexp, std::string sql,
+                                               sexp array_data_xptr, sexp schema_xptr) {
   external_pointer<SQLite3Connection> con(con_sexp);
 
   struct ArrowArray* array_data_out = reinterpret_cast<struct ArrowArray*>(
@@ -485,5 +497,65 @@ void gpkg_cpp_query_all(sexp con_sexp, std::string sql,
     R_ExternalPtrAddr(schema_xptr)
   );
 
-  gpkg_cpp_query_base(con->ptr, sql, array_data_out, schema_out);
+  return gpkg_query_async(con->ptr, sql, array_data_out, schema_out);
+}
+
+[[cpp11::register]]
+void gpkg_cpp_query(list con_sexp, strings sql, list array_data_xptr, list schema_xptr) {
+  std::vector<std::future<std::string>> futures;
+
+  for (R_xlen_t i = 0; i < con_sexp.size(); i++) {
+    futures.push_back(
+      gpkg_query_async_sexp(
+        con_sexp[i],
+        sql[i],
+        array_data_xptr[i],
+        schema_xptr[i]
+      )
+    );
+  }
+
+  std::string error_message("");
+  SEXP interrupt_error = R_NilValue;
+
+  do {
+    int64_t last_future = static_cast<int64_t>(futures.size()) - 1;
+    for (int64_t i = last_future; i >= 0; i--) {
+      auto& fut = futures[i];
+      auto status = fut.wait_for(std::chrono::milliseconds(500));
+
+
+      if (status == std::future_status::ready) {
+        std::string result = fut.get();
+        if (result != "") {
+          error_message = result;
+          futures.pop_back();
+          break;
+        } else {
+          futures.pop_back();
+        }
+      }
+    }
+
+    try {
+      check_user_interrupt();
+    } catch (unwind_exception& e) {
+      interrupt_error = e.token;
+    }
+  } while (futures.size() > 0 && error_message == "" && interrupt_error == R_NilValue);
+
+  // cancel everything left and wait for the futures to finish
+  for (size_t i = 0; i < futures.size(); i++) {
+    external_pointer<SQLite3Connection> con(con_sexp[static_cast<R_xlen_t>(i)]);
+    sqlite3_interrupt(con->ptr);
+    futures[i].wait();
+  }
+
+  if (interrupt_error != R_NilValue) {
+    throw unwind_exception(interrupt_error);
+  }
+
+  if (error_message != "") {
+    throw SQLite3Error(error_message);
+  }
 }
