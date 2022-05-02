@@ -28,6 +28,25 @@ test_that("gpkg_query() errors for invalid SQL", {
   expect_error(gpkg_query(con, "not sql"), "SQL logic error")
 })
 
+test_that("gpkg_query_narrow() can read in parallel", {
+  con <- gpkg_open(gpkg_example("nc"))
+  query <- "SELECT row_num from nc"
+
+  expect_identical(
+    gpkg_query_narrow(con, character()),
+    list()
+  )
+
+  result1 <- gpkg_query_narrow(con, query)[[1]]
+  expect_identical(result1$array_data$length, 100L)
+
+  result10 <- gpkg_query_narrow(con, rep(query, 10))
+  expect_identical(
+    lapply(result10, narrow::from_narrow_array),
+    rep(list(narrow::from_narrow_array(result1)), 10)
+  )
+})
+
 test_that("gpkg_query() can read to data.frame", {
   con <- gpkg_open_test()
   on.exit(gpkg_close(con))

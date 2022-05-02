@@ -56,7 +56,7 @@ gpkg_query_narrow <- function(con, sql) {
   })
 
   con_list[-1] <- lapply(con_list[-1], function(c) {
-    file <- attr(c, "file")
+    file <- attr(con, "file")
     stopifnot(file != ":memory:")
     gpkg_open(file)
   })
