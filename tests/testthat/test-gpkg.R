@@ -47,6 +47,18 @@ test_that("gpkg_query_narrow() can read in parallel", {
   )
 })
 
+test_that("gpkg_query_narrow() can error in parallel", {
+  con <- gpkg_open(gpkg_example("nc"))
+  on.exit(gpkg_close(con))
+
+  query <- "SELECT row_num from nc"
+  expect_error(
+    gpkg_query_narrow(con, c("NOT SQL", rep(query, 10))),
+    "SQL logic error"
+  )
+})
+
+
 test_that("gpkg_query() can read to data.frame", {
   con <- gpkg_open_test()
   on.exit(gpkg_close(con))

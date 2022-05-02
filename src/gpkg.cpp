@@ -518,22 +518,17 @@ void gpkg_cpp_query(list con_sexp, strings sql, list array_data_xptr, list schem
   std::string error_message("");
   SEXP interrupt_error = R_NilValue;
 
-  do {
-    int64_t last_future = static_cast<int64_t>(futures.size()) - 1;
-    for (int64_t i = last_future; i >= 0; i--) {
-      auto& fut = futures[i];
-      auto status = fut.wait_for(std::chrono::milliseconds(500));
+  while (!futures.empty() && error_message == "" && interrupt_error == R_NilValue) {
+    const auto& fut = futures.back();
+    auto status = fut.wait_for(std::chrono::milliseconds(500));
 
-
-      if (status == std::future_status::ready) {
-        std::string result = fut.get();
-        if (result != "") {
-          error_message = result;
-          futures.pop_back();
-          break;
-        } else {
-          futures.pop_back();
-        }
+    if (status == std::future_status::ready) {
+      auto& fut_read = futures.back();
+      std::string result = fut_read.get();
+      futures.pop_back();
+      if (result != "") {
+        error_message = result;
+        break;
       }
     }
 
@@ -542,13 +537,16 @@ void gpkg_cpp_query(list con_sexp, strings sql, list array_data_xptr, list schem
     } catch (unwind_exception& e) {
       interrupt_error = e.token;
     }
-  } while (futures.size() > 0 && error_message == "" && interrupt_error == R_NilValue);
+  } ;
 
   // cancel everything left and wait for the futures to finish
   for (size_t i = 0; i < futures.size(); i++) {
     external_pointer<SQLite3Connection> con(con_sexp[static_cast<R_xlen_t>(i)]);
     sqlite3_interrupt(con->ptr);
-    futures[i].wait();
+  }
+
+  for (const auto& fut: futures) {
+    fut.wait();
   }
 
   if (interrupt_error != R_NilValue) {
