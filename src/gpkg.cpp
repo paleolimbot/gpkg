@@ -359,6 +359,7 @@ public:
     struct ArrowArray dummy_array_data;
     dummy_array_data.release = nullptr;
     builder_->release(&dummy_array_data, &schema_);
+    dummy_array_data.release(&dummy_array_data);
 
     return result;
   }
