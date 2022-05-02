@@ -8,6 +8,10 @@
 #' @export
 #'
 gpkg_open <- function(file = ":memory:") {
+  if (!identical(file, ":memory:")) {
+    file <- path.expand(file)
+  }
+
   structure(
     gpkg_cpp_open(file),
     file = file,
