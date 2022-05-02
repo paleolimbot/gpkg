@@ -61,7 +61,7 @@ public:
   virtual bool append_blob(const unsigned char* value, int64_t size) { return false; }
   virtual bool append_text(const unsigned char* value, int64_t size) { return false; }
 
-  void append_stmt(sqlite3_stmt* stmt, int i) {
+  virtual void append_stmt(sqlite3_stmt* stmt, int i) {
     int column_type_id = sqlite3_column_type(stmt, i);
     int64_t size = 0;
 
@@ -107,7 +107,11 @@ public:
     size_++;
   }
 
-  bool append_text(const unsigned char* value, int64_t size) {
+  virtual bool append_blob(const unsigned char* value, int64_t size) {
+    return append_text(value, size);
+  }
+
+  virtual bool append_text(const unsigned char* value, int64_t size) {
     builder_->write_buffer(value, size);
     builder_->finish_element();
     size_++;
@@ -125,7 +129,7 @@ public:
     );
   }
 
-private:
+protected:
   std::unique_ptr<BuilderT> builder_;
 };
 
@@ -172,10 +176,60 @@ private:
   std::unique_ptr<BuilderT> builder_;
 };
 
-using SQLite3Int32Builder= SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
-using SQLite3Float64Builder= SQLite3NumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
-using SQLite3BinaryBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::BinaryArrayBuilder>;
-using SQLite3StringBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+using BooleanBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using TinyIntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using SmallIntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using MediumIntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using IntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using FloatBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
+using DoubleBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
+using TextBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+using BlobBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::BinaryArrayBuilder>;
+
+using DateBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+using DateTimeBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+
+
+class GeometryBuilder: public BlobBuilder {
+public:
+  virtual bool append_blob(const unsigned char* value, int64_t size) {
+    // We need to skip the gpkg header and just append the WKB
+    // https://www.geopackage.org/spec130/index.html#gpb_format
+    if (size < 4 ) {
+      throw SQLite3Error("Unexpected geometry BLOB (size < 4)");
+    }
+
+    unsigned char envelope_flag = (value[3] & 0x70) >> 1;
+    int64_t envelope_size = 0;
+    switch (envelope_flag) {
+    case 0:
+      envelope_size = 0;
+      break;
+    case 1:
+      envelope_size = 32;
+      break;
+    case 2:
+    case 3:
+      envelope_size = 48;
+      break;
+    case 4:
+      envelope_size = 64;
+      break;
+    default:
+      throw SQLite3Error("Unexpected envelope flag value");
+    }
+
+    builder_->write_buffer(value + (8 + envelope_size), size);
+    builder_->finish_element();
+    return true;
+  }
+
+  virtual bool append_text(const unsigned char* value, int64_t size) {
+    return false;
+  }
+};
+
+
 
 class SQLite3StructBuilder: public arrow::hpp::builder::StructArrayBuilder {
 public:
@@ -187,20 +241,69 @@ public:
 std::unique_ptr<SQLite3ColumnBuilder> MakeColumnBuilder(const char* decl_type,
                                                         int first_value_type) {
   std::unique_ptr<SQLite3ColumnBuilder> builder;
-  switch (first_value_type) {
-  case SQLITE_INTEGER:
-    // int32 for prototype; narrow doesn't define a conversion from int64_t to R
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3Int32Builder());
-    break;
-  case SQLITE_FLOAT:
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3Float64Builder());
-    break;
-  case SQLITE_BLOB:
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3BinaryBuilder());
-    break;
-  default:
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SQLite3StringBuilder());
-    break;
+
+  // Try using the declared type first (without parentheses)
+  std::string decl_type_str(decl_type);
+  const char* first_paren = strchr(decl_type, '(');
+  if (first_paren != nullptr) {
+    decl_type_str = std::string(decl_type, first_paren);
+  }
+
+  if (decl_type_str == "BOOLEAN") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new BooleanBuilder());
+  } else if (decl_type_str == "TINYINT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new TinyIntBuilder());
+  } else if (decl_type_str == "SMALLINT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SmallIntBuilder());
+  } else if (decl_type_str == "MEDIUMINT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new MediumIntBuilder());
+  } else if (decl_type_str == "INT" || decl_type_str == "INTEGER") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new IntBuilder());
+  } else if (decl_type_str == "FLOAT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new FloatBuilder());
+  } else if (decl_type_str == "DOUBLE" || decl_type_str == "REAL") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new DoubleBuilder());
+  } else if (decl_type_str == "TEXT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new TextBuilder());
+  } else if (decl_type_str == "BLOB") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new BlobBuilder());
+  } else if (decl_type_str == "GEOMETRY") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "POINT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "LINESTRING") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "POLYGON") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "MULTIPOINT") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "MULTILINESTRING") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "MULTIPOLYGON") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "GEOMETRYCOLLECTION") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+  } else if (decl_type_str == "DATE") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new DateBuilder());
+  } else if (decl_type_str == "DATETIME") {
+    builder = std::unique_ptr<SQLite3ColumnBuilder>(new DateTimeBuilder());
+  } else {
+    // Fall back on the type of the first value
+    switch (first_value_type) {
+    case SQLITE_INTEGER:
+      // int32 for prototype; narrow doesn't define a conversion from int64_t to R
+      builder = std::unique_ptr<SQLite3ColumnBuilder>(new MediumIntBuilder());
+      break;
+    case SQLITE_FLOAT:
+      builder = std::unique_ptr<SQLite3ColumnBuilder>(new DoubleBuilder());
+      break;
+    case SQLITE_BLOB:
+      builder = std::unique_ptr<SQLite3ColumnBuilder>(new BlobBuilder());
+      break;
+    default:
+      builder = std::unique_ptr<SQLite3ColumnBuilder>(new TextBuilder());
+      break;
+    }
   }
 
   builder->set_decl_type(decl_type);

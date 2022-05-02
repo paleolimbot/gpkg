@@ -74,9 +74,15 @@ test_that("gpkg_query_table() can read to Table", {
 test_that("gpkg_list_tables() lists tables", {
   con <- gpkg_open()
   expect_identical(gpkg_list_tables(con), character())
+  gpkg_close(con)
 
   con <- gpkg_open_test()
   on.exit(gpkg_close(con))
   expect_identical(gpkg_list_tables(con), "crossfit")
+})
+
+test_that("stuff with gpkg", {
+  con <- gpkg_open(gpkg_example("point"))
+  table <- gpkg_query_table(con, "SELECT * FROM point")
 })
 
