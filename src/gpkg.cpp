@@ -324,10 +324,8 @@ std::unique_ptr<SQLite3ColumnBuilder> MakeColumnBuilder(const char* decl_type,
 
 class SQLite3ArrayStreamHolder {
 public:
-  SQLite3ArrayStreamHolder(sexp con_sexp, const std::string& sql):
-    con_sexp_(con_sexp), sql_(sql), status_(SQLITE_OK) {
-    external_pointer<SQLite3Connection> con(con_sexp);
-    con_= con->ptr;
+  SQLite3ArrayStreamHolder(sqlite3* con, const std::string& sql):
+    con_(con), sql_(sql), status_(SQLITE_OK) {
     schema_.release = nullptr;
   }
 
@@ -383,7 +381,6 @@ public:
   }
 
 private:
-  sexp con_sexp_;
   sqlite3* con_;
   std::string sql_;
   SQLite3Stmt stmt_;
@@ -457,17 +454,11 @@ int gpkg_cpp_exec(cpp11::sexp con_sexp, std::string sql) {
   return result;
 }
 
-[[cpp11::register]]
-void gpkg_cpp_query_all(sexp con_sexp, std::string sql,
-                          sexp array_data_xptr, sexp schema_xptr) {
-  struct ArrowArray* array_data_out = reinterpret_cast<struct ArrowArray*>(
-    R_ExternalPtrAddr(array_data_xptr)
-  );
-  struct ArrowSchema* schema_out = reinterpret_cast<struct ArrowSchema*>(
-    R_ExternalPtrAddr(schema_xptr)
-  );
-
-  SQLite3ArrayStreamHolder holder(con_sexp, sql);
+void gpkg_cpp_query_base(sqlite3* con,
+                         const std::string& sql,
+                         struct ArrowArray* array_data_out,
+                         struct ArrowSchema* schema_out) {
+  SQLite3ArrayStreamHolder holder(con, sql);
   holder.step_first();
   int result;
   int64_t i = 0;
@@ -480,4 +471,19 @@ void gpkg_cpp_query_all(sexp con_sexp, std::string sql,
   } while (result != SQLITE_DONE);
 
   holder.release_batch(array_data_out, schema_out);
+}
+
+[[cpp11::register]]
+void gpkg_cpp_query_all(sexp con_sexp, std::string sql,
+                          sexp array_data_xptr, sexp schema_xptr) {
+  external_pointer<SQLite3Connection> con(con_sexp);
+
+  struct ArrowArray* array_data_out = reinterpret_cast<struct ArrowArray*>(
+    R_ExternalPtrAddr(array_data_xptr)
+  );
+  struct ArrowSchema* schema_out = reinterpret_cast<struct ArrowSchema*>(
+    R_ExternalPtrAddr(schema_xptr)
+  );
+
+  gpkg_cpp_query_base(con->ptr, sql, array_data_out, schema_out);
 }
