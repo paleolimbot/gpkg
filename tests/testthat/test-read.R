@@ -10,6 +10,7 @@ test_that("read_gpkg_sf() works", {
   nc <- read_gpkg_sf(gpkg_example("nc"))
   expect_s3_class(nc, "sf")
   expect_s3_class(nc$geom, "sfc_MULTIPOLYGON")
+  expect_false(sf::st_crs(nc) == sf::NA_crs_)
 })
 
 test_that("read_gpkg_sf() works for all example files", {
