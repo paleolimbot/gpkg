@@ -25,30 +25,28 @@ remotes::install_github("paleolimbot/gpkg")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem
-(test SQL courtesy of the [duckdb](https://github.com/duckdb/duckdb/)
-tests):
+This is a basic example which shows you how to solve a common problem:
 
 ``` r
 library(gpkg)
-
-con <- gpkg_open()
-gpkg_exec(con, "CREATE TABLE crossfit (exercise text, difficulty_level int)")
-#> [1] 0
-gpkg_exec(con, "INSERT INTO crossfit VALUES ('Push Ups', 3), ('Pull Ups', 5) , ('Push Jerk', 7), ('Bar Muscle Up', 10)")
-#> [1] 0
-
-# Query to Table
-gpkg_query_table(con, "SELECT * from crossfit where difficulty_level >= 5")
-#> Table
-#> 3 rows x 2 columns
-#> $exercise <string>
-#> $difficulty_level <int32>
-
-# ...or directly to data.frame:
-gpkg_query(con, "SELECT * from crossfit where difficulty_level >= 5")
-#>        exercise difficulty_level
-#> 1      Pull Ups                5
-#> 2     Push Jerk                7
-#> 3 Bar Muscle Up               10
+read_gpkg_sf(gpkg_example("nc"))
+#> Simple feature collection with 100 features and 2 fields
+#> Geometry type: MULTIPOLYGON
+#> Dimension:     XY
+#> Bounding box:  xmin: -84.32385 ymin: 33.88199 xmax: -75.45698 ymax: 36.58965
+#> Geodetic CRS:  NAD27
+#> # A tibble: 100 × 3
+#>      fid row_num                                                            geom
+#>    <int>   <int>                                              <MULTIPOLYGON [°]>
+#>  1     1       1 (((-81.47276 36.23436, -81.54084 36.27251, -81.56198 36.27359,…
+#>  2     2       2 (((-81.23989 36.36536, -81.24069 36.37942, -81.26284 36.40504,…
+#>  3     3       3 (((-80.45634 36.24256, -80.47639 36.25473, -80.53688 36.25674,…
+#>  4     4       4 (((-76.00897 36.3196, -76.01735 36.33773, -76.03288 36.33598, …
+#>  5     5       5 (((-77.21767 36.24098, -77.23461 36.2146, -77.29861 36.21153, …
+#>  6     6       6 (((-76.74506 36.23392, -76.98069 36.23024, -76.99475 36.23558,…
+#>  7     7       7 (((-76.00897 36.3196, -75.95718 36.19377, -75.98134 36.16973, …
+#>  8     8       8 (((-76.56251 36.34057, -76.60424 36.31498, -76.64822 36.31532,…
+#>  9     9       9 (((-78.30876 36.26004, -78.28293 36.29188, -78.32125 36.54553,…
+#> 10    10      10 (((-80.02567 36.25023, -80.45301 36.25709, -80.43531 36.55104,…
+#> # … with 90 more rows
 ```

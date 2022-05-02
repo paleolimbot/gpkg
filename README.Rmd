@@ -32,18 +32,9 @@ remotes::install_github("paleolimbot/gpkg")
 
 ## Example
 
-This is a basic example which shows you how to solve a common problem (test SQL courtesy of the [duckdb](https://github.com/duckdb/duckdb/) tests):
+This is a basic example which shows you how to solve a common problem:
 
 ```{r example}
 library(gpkg)
-
-con <- gpkg_open()
-gpkg_exec(con, "CREATE TABLE crossfit (exercise text, difficulty_level int)")
-gpkg_exec(con, "INSERT INTO crossfit VALUES ('Push Ups', 3), ('Pull Ups', 5) , ('Push Jerk', 7), ('Bar Muscle Up', 10)")
-
-# Query to Table
-gpkg_query_table(con, "SELECT * from crossfit where difficulty_level >= 5")
-
-# ...or directly to data.frame:
-gpkg_query(con, "SELECT * from crossfit where difficulty_level >= 5")
+read_gpkg_sf(gpkg_example("nc"))
 ```
