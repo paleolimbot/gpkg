@@ -13,38 +13,38 @@ using namespace cpp11;
 #include "sqlite3.h"
 
 
-class SQLite3Connection {
+class GPKGConnection {
 public:
   sqlite3* ptr;
-  SQLite3Connection(): ptr(nullptr) {}
+  GPKGConnection(): ptr(nullptr) {}
 
-  ~SQLite3Connection() {
+  ~GPKGConnection() {
     if (ptr != nullptr) {
       sqlite3_close(ptr);
     }
   }
 };
 
-class SQLite3Stmt {
+class GPKGStmt {
 public:
   sqlite3_stmt* ptr;
-  SQLite3Stmt(): ptr(nullptr) {}
+  GPKGStmt(): ptr(nullptr) {}
 
-  ~SQLite3Stmt() {
+  ~GPKGStmt() {
     if (ptr != nullptr) {
       sqlite3_finalize(ptr);
     }
   }
 };
 
-class SQLite3Error: public std::runtime_error {
+class GPKGError: public std::runtime_error {
 public:
-    SQLite3Error(const std::string& err): std::runtime_error(err) {}
+    GPKGError(const std::string& err): std::runtime_error(err) {}
 };
 
-class SQLite3ColumnBuilder: public arrow::hpp::builder::ArrayBuilder {
+class GPKGColumnBuilder: public arrow::hpp::builder::ArrayBuilder {
 public:
-  SQLite3ColumnBuilder(): decl_type_("") {}
+  GPKGColumnBuilder(): decl_type_("") {}
 
   const std::string& decl_type() { return decl_type_; }
 
@@ -90,7 +90,7 @@ public:
       }
 
     default:
-      throw SQLite3Error("All SQLITE3 type conversions failed");
+      throw GPKGError("All SQLITE3 type conversions failed");
     }
   }
 
@@ -99,9 +99,9 @@ private:
 };
 
 template<typename BuilderT>
-class SQLite3GenericStringBuilder: public SQLite3ColumnBuilder {
+class GPKGGenericStringBuilder: public GPKGColumnBuilder {
 public:
-  SQLite3GenericStringBuilder(): builder_(new BuilderT()) {}
+  GPKGGenericStringBuilder(): builder_(new BuilderT()) {}
 
   void append_null() {
     builder_->finish_element(false);
@@ -135,9 +135,9 @@ protected:
 };
 
 template<typename BuilderT>
-class SQLite3NumericBuilder: public SQLite3ColumnBuilder {
+class GPKGNumericBuilder: public GPKGColumnBuilder {
 public:
-  SQLite3NumericBuilder(): builder_(new BuilderT()) {}
+  GPKGNumericBuilder(): builder_(new BuilderT()) {}
 
   void append_null() {
     builder_->write_element(0, false);
@@ -155,11 +155,11 @@ public:
   }
 
   bool append_blob(const unsigned char* value, int64_t size) {
-    throw SQLite3Error("Can't write numeric from SQLITE_BLOB");
+    throw GPKGError("Can't write numeric from SQLITE_BLOB");
   }
 
   bool append_text(const unsigned char* value, int64_t size) {
-    throw SQLite3Error("Can't write numeric from SQLITE_TEXT");
+    throw GPKGError("Can't write numeric from SQLITE_TEXT");
   }
 
   void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
@@ -177,18 +177,18 @@ private:
   std::unique_ptr<BuilderT> builder_;
 };
 
-using BooleanBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
-using TinyIntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
-using SmallIntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
-using MediumIntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
-using IntBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
-using FloatBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
-using DoubleBuilder = SQLite3NumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
-using TextBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
-using BlobBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::BinaryArrayBuilder>;
+using BooleanBuilder = GPKGNumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using TinyIntBuilder = GPKGNumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using SmallIntBuilder = GPKGNumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using MediumIntBuilder = GPKGNumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using IntBuilder = GPKGNumericBuilder<arrow::hpp::builder::Int32ArrayBuilder>;
+using FloatBuilder = GPKGNumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
+using DoubleBuilder = GPKGNumericBuilder<arrow::hpp::builder::Float64ArrayBuilder>;
+using TextBuilder = GPKGGenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+using BlobBuilder = GPKGGenericStringBuilder<arrow::hpp::builder::BinaryArrayBuilder>;
 
-using DateBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
-using DateTimeBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+using DateBuilder = GPKGGenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
+using DateTimeBuilder = GPKGGenericStringBuilder<arrow::hpp::builder::StringArrayBuilder>;
 
 
 class GeometryBuilder: public BlobBuilder {
@@ -197,7 +197,7 @@ public:
     // We need to skip the gpkg header and just append the WKB
     // https://www.geopackage.org/spec130/index.html#gpb_format
     if (size < 4 ) {
-      throw SQLite3Error("Unexpected geometry BLOB (size < 4)");
+      throw GPKGError("Unexpected geometry BLOB (size < 4)");
     }
 
     unsigned char flag_byte = value[3];
@@ -219,11 +219,11 @@ public:
       envelope_size = 64;
       break;
     default:
-      throw SQLite3Error("Unexpected envelope flag value");
+      throw GPKGError("Unexpected envelope flag value");
     }
 
     if ((8 + envelope_size) > size) {
-      throw SQLite3Error("Geometry BLOB size smaller than header + envelope");
+      throw GPKGError("Geometry BLOB size smaller than header + envelope");
     }
 
     builder_->write_buffer(value + (8 + envelope_size), size);
@@ -238,22 +238,22 @@ public:
   void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
     builder_->set_metadata("ARROW:extension:name", "geoarrow.wkb");
     builder_->set_metadata("ARROW:extension:metadata", {'\0', '\0', '\0', '\0'});
-    SQLite3GenericStringBuilder::release(array_data, schema);
+    GPKGGenericStringBuilder::release(array_data, schema);
   }
 };
 
 
 
-class SQLite3StructBuilder: public arrow::hpp::builder::StructArrayBuilder {
+class GPKGStructBuilder: public arrow::hpp::builder::StructArrayBuilder {
 public:
-  SQLite3ColumnBuilder* child(int64_t i) {
-    return reinterpret_cast<SQLite3ColumnBuilder*>(children_[i].get());
+  GPKGColumnBuilder* child(int64_t i) {
+    return reinterpret_cast<GPKGColumnBuilder*>(children_[i].get());
   }
 };
 
-std::unique_ptr<SQLite3ColumnBuilder> MakeColumnBuilder(const char* decl_type,
+std::unique_ptr<GPKGColumnBuilder> MakeColumnBuilder(const char* decl_type,
                                                         int first_value_type) {
-  std::unique_ptr<SQLite3ColumnBuilder> builder;
+  std::unique_ptr<GPKGColumnBuilder> builder;
 
   // Try using the declared type first (without parentheses)
   std::string decl_type_str(decl_type);
@@ -263,58 +263,58 @@ std::unique_ptr<SQLite3ColumnBuilder> MakeColumnBuilder(const char* decl_type,
   }
 
   if (decl_type_str == "BOOLEAN") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new BooleanBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new BooleanBuilder());
   } else if (decl_type_str == "TINYINT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new TinyIntBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new TinyIntBuilder());
   } else if (decl_type_str == "SMALLINT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new SmallIntBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new SmallIntBuilder());
   } else if (decl_type_str == "MEDIUMINT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new MediumIntBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new MediumIntBuilder());
   } else if (decl_type_str == "INT" || decl_type_str == "INTEGER") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new IntBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new IntBuilder());
   } else if (decl_type_str == "FLOAT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new FloatBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new FloatBuilder());
   } else if (decl_type_str == "DOUBLE" || decl_type_str == "REAL") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new DoubleBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new DoubleBuilder());
   } else if (decl_type_str == "TEXT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new TextBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new TextBuilder());
   } else if (decl_type_str == "BLOB") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new BlobBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new BlobBuilder());
   } else if (decl_type_str == "GEOMETRY") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "POINT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "LINESTRING") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "POLYGON") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "MULTIPOINT") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "MULTILINESTRING") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "MULTIPOLYGON") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "GEOMETRYCOLLECTION") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new GeometryBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new GeometryBuilder());
   } else if (decl_type_str == "DATE") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new DateBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new DateBuilder());
   } else if (decl_type_str == "DATETIME") {
-    builder = std::unique_ptr<SQLite3ColumnBuilder>(new DateTimeBuilder());
+    builder = std::unique_ptr<GPKGColumnBuilder>(new DateTimeBuilder());
   } else {
     // Fall back on the type of the first value
     switch (first_value_type) {
     case SQLITE_INTEGER:
       // int32 for prototype; narrow doesn't define a conversion from int64_t to R
-      builder = std::unique_ptr<SQLite3ColumnBuilder>(new MediumIntBuilder());
+      builder = std::unique_ptr<GPKGColumnBuilder>(new MediumIntBuilder());
       break;
     case SQLITE_FLOAT:
-      builder = std::unique_ptr<SQLite3ColumnBuilder>(new DoubleBuilder());
+      builder = std::unique_ptr<GPKGColumnBuilder>(new DoubleBuilder());
       break;
     case SQLITE_BLOB:
-      builder = std::unique_ptr<SQLite3ColumnBuilder>(new BlobBuilder());
+      builder = std::unique_ptr<GPKGColumnBuilder>(new BlobBuilder());
       break;
     default:
-      builder = std::unique_ptr<SQLite3ColumnBuilder>(new TextBuilder());
+      builder = std::unique_ptr<GPKGColumnBuilder>(new TextBuilder());
       break;
     }
   }
@@ -323,14 +323,14 @@ std::unique_ptr<SQLite3ColumnBuilder> MakeColumnBuilder(const char* decl_type,
   return builder;
 }
 
-class SQLite3ArrayStreamHolder {
+class GPKGArrayStreamHolder {
 public:
-  SQLite3ArrayStreamHolder(sqlite3* con, const std::string& sql):
+  GPKGArrayStreamHolder(sqlite3* con, const std::string& sql):
     con_(con), sql_(sql), status_(SQLITE_OK) {
     schema_.release = nullptr;
   }
 
-  ~SQLite3ArrayStreamHolder() {
+  ~GPKGArrayStreamHolder() {
     if (schema_.release != nullptr) {
       schema_.release(&schema_);
     }
@@ -339,15 +339,15 @@ public:
   int step_first() {
     int result = step();
 
-    this->builder_ = std::unique_ptr<SQLite3StructBuilder>(
-      new SQLite3StructBuilder()
+    this->builder_ = std::unique_ptr<GPKGStructBuilder>(
+      new GPKGStructBuilder()
     );
 
     int n_columns = sqlite3_column_count(stmt());
     for (int i = 0; i < n_columns; i++) {
       const char* name = sqlite3_column_name(stmt(), i);
       if (name == nullptr) {
-        throw SQLite3Error("failed to allocate: sqlite3_column_name()");
+        throw GPKGError("failed to allocate: sqlite3_column_name()");
       }
 
       const char* decl_type = sqlite3_column_decltype(stmt(), i);
@@ -384,10 +384,10 @@ public:
 private:
   sqlite3* con_;
   std::string sql_;
-  SQLite3Stmt stmt_;
+  GPKGStmt stmt_;
   int status_;
 
-  std::unique_ptr<SQLite3StructBuilder> builder_;
+  std::unique_ptr<GPKGStructBuilder> builder_;
   struct ArrowSchema schema_;
 
   int step() {
@@ -403,7 +403,7 @@ private:
 
     std::stringstream stream;
     stream << sqlite3_errstr(result) << sqlite3_errmsg(con_);
-    throw SQLite3Error(stream.str().c_str());
+    throw GPKGError(stream.str().c_str());
   }
 
   sqlite3_stmt* stmt() {
@@ -413,7 +413,7 @@ private:
       if (result != SQLITE_OK) {
         std::stringstream stream;
         stream << "<" << sqlite3_errstr(result) << "> " << sqlite3_errmsg(con_);
-        throw SQLite3Error(stream.str().c_str());
+        throw GPKGError(stream.str().c_str());
       }
     }
 
@@ -423,7 +423,7 @@ private:
 
 [[cpp11::register]]
 cpp11::sexp gpkg_cpp_open(std::string filename) {
-  external_pointer<SQLite3Connection> con(new SQLite3Connection());
+  external_pointer<GPKGConnection> con(new GPKGConnection());
   int result = sqlite3_open(filename.c_str(), &con->ptr);
   if (result != SQLITE_OK) {
     stop("%s", sqlite3_errstr(result));
@@ -434,7 +434,7 @@ cpp11::sexp gpkg_cpp_open(std::string filename) {
 
 [[cpp11::register]]
 void gpkg_cpp_close(cpp11::sexp con_sexp) {
-  external_pointer<SQLite3Connection> con(con_sexp);
+  external_pointer<GPKGConnection> con(con_sexp);
   int result = sqlite3_close(con->ptr);
   if (result != SQLITE_OK) {
     stop("%s", sqlite3_errstr(result));
@@ -445,7 +445,7 @@ void gpkg_cpp_close(cpp11::sexp con_sexp) {
 
 [[cpp11::register]]
 int gpkg_cpp_exec(cpp11::sexp con_sexp, std::string sql) {
-  external_pointer<SQLite3Connection> con(con_sexp);
+  external_pointer<GPKGConnection> con(con_sexp);
   char* error_message = nullptr;
   int result = sqlite3_exec(con->ptr, sql.c_str(), nullptr, nullptr, &error_message);
   if (error_message != nullptr) {
@@ -460,7 +460,7 @@ std::string gpkg_query(sqlite3* con,
                        struct ArrowArray* array_data_out,
                        struct ArrowSchema* schema_out) {
   try {
-    SQLite3ArrayStreamHolder holder(con, sql);
+    GPKGArrayStreamHolder holder(con, sql);
     holder.step_first();
     int result;
     do {
@@ -488,7 +488,7 @@ std::future<std::string> gpkg_query_async(sqlite3* con,
 
 std::future<std::string> gpkg_query_async_sexp(sexp con_sexp, std::string sql,
                                                sexp array_data_xptr, sexp schema_xptr) {
-  external_pointer<SQLite3Connection> con(con_sexp);
+  external_pointer<GPKGConnection> con(con_sexp);
 
   struct ArrowArray* array_data_out = reinterpret_cast<struct ArrowArray*>(
     R_ExternalPtrAddr(array_data_xptr)
@@ -541,7 +541,7 @@ void gpkg_cpp_query(list con_sexp, strings sql, list array_data_xptr, list schem
 
   // cancel everything left and wait for the futures to finish
   for (size_t i = 0; i < futures.size(); i++) {
-    external_pointer<SQLite3Connection> con(con_sexp[static_cast<R_xlen_t>(i)]);
+    external_pointer<GPKGConnection> con(con_sexp[static_cast<R_xlen_t>(i)]);
     sqlite3_interrupt(con->ptr);
   }
 
@@ -554,6 +554,6 @@ void gpkg_cpp_query(list con_sexp, strings sql, list array_data_xptr, list schem
   }
 
   if (error_message != "") {
-    throw SQLite3Error(error_message);
+    throw GPKGError(error_message);
   }
 }
