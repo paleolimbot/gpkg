@@ -84,11 +84,17 @@ test_that("gpkg_list_tables() lists tables", {
 test_that("gpkg_query_table() can decode the geometry column", {
   skip_if_not_installed("arrow")
 
-  for (ex in c("point", "point_z", "linestring")) {
-    ex <- "linestring"
+  for (ex in c("point", "linestring", "linestring_z")) {
     con <- gpkg_open(gpkg_example(ex))
     table <- gpkg_query_table(con, sprintf("SELECT * FROM %s", ex))
     wkb <- wk::wkb(unclass(as.data.frame(table)$geom))
+    expect_identical(wk::validate_wk_wkb(wkb), wkb)
+
+    array <- gpkg_query_narrow(con, sprintf("SELECT * FROM %s", ex))
+    expect_identical(
+      array$schema$children[[2]]$metadata$`ARROW:extension:name`,
+      "geoarrow.wkb"
+    )
     gpkg_close(con)
   }
 })

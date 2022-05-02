@@ -118,7 +118,7 @@ public:
     return true;
   }
 
-  void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
+  virtual void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
     builder_->set_name(name());
     builder_->set_metadata("R_gpkg:decltype", decl_type());
     builder_->shrink();
@@ -192,7 +192,7 @@ using DateTimeBuilder = SQLite3GenericStringBuilder<arrow::hpp::builder::StringA
 
 class GeometryBuilder: public BlobBuilder {
 public:
-  virtual bool append_blob(const unsigned char* value, int64_t size) {
+  bool append_blob(const unsigned char* value, int64_t size) {
     // We need to skip the gpkg header and just append the WKB
     // https://www.geopackage.org/spec130/index.html#gpb_format
     if (size < 4 ) {
@@ -230,8 +230,14 @@ public:
     return true;
   }
 
-  virtual bool append_text(const unsigned char* value, int64_t size) {
+  bool append_text(const unsigned char* value, int64_t size) {
     return false;
+  }
+
+  void release(struct ArrowArray* array_data, struct ArrowSchema* schema) {
+    builder_->set_metadata("ARROW:extension:name", "geoarrow.wkb");
+    builder_->set_metadata("ARROW:extension:metadata", {'\0', '\0', '\0', '\0'});
+    SQLite3GenericStringBuilder::release(array_data, schema);
   }
 };
 
