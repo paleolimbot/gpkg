@@ -81,8 +81,14 @@ test_that("gpkg_list_tables() lists tables", {
   expect_identical(gpkg_list_tables(con), "crossfit")
 })
 
-test_that("stuff with gpkg", {
-  con <- gpkg_open(gpkg_example("point"))
-  table <- gpkg_query_table(con, "SELECT * FROM point")
-})
+test_that("gpkg_query_table() can decode the geometry column", {
+  skip_if_not_installed("arrow")
 
+  for (ex in c("point", "point_z", "linestring")) {
+    ex <- "linestring"
+    con <- gpkg_open(gpkg_example(ex))
+    table <- gpkg_query_table(con, sprintf("SELECT * FROM %s", ex))
+    wkb <- wk::wkb(unclass(as.data.frame(table)$geom))
+    gpkg_close(con)
+  }
+})

@@ -4,9 +4,9 @@
 \name{gpkg-package}
 \alias{gpkg}
 \alias{gpkg-package}
-\title{gpkg: Proof of Concept 'SQLite3' to Arrow Converter}
+\title{gpkg: Proof of Concept 'GeoPackage' to Arrow Converter}
 \description{
-Provides a proof-of-concept converter that takes a SQLite3 query and returns an ArrowArrayStream.
+Provides a proof-of-concept converter that takes a gpkg query and returns the data using the 'Arrow' C data interface.
 }
 \seealso{
 Useful links:

@@ -199,7 +199,9 @@ public:
       throw SQLite3Error("Unexpected geometry BLOB (size < 4)");
     }
 
-    unsigned char envelope_flag = (value[3] & 0x70) >> 1;
+    unsigned char flag_byte = value[3];
+    unsigned char flag_byte_masked = flag_byte & static_cast<unsigned char>(0x0e);
+    unsigned char envelope_flag = flag_byte_masked >> 1;
     int64_t envelope_size = 0;
     switch (envelope_flag) {
     case 0:
@@ -217,6 +219,10 @@ public:
       break;
     default:
       throw SQLite3Error("Unexpected envelope flag value");
+    }
+
+    if ((8 + envelope_size) > size) {
+      throw SQLite3Error("Geometry BLOB size smaller than header + envelope");
     }
 
     builder_->write_buffer(value + (8 + envelope_size), size);
