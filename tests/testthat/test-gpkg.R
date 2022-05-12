@@ -118,7 +118,7 @@ test_that("gpkg_query_table() can decode the geometry column", {
   for (ex in c("point", "linestring", "linestring_z")) {
     con <- gpkg_open(gpkg_example(ex))
     table <- gpkg_query_table(con, sprintf("SELECT * FROM %s", ex))
-    wkb <- wk::wkb(unclass(as.data.frame(table)$geom))
+    wkb <- wk::wkb(unclass(table$geom$chunk(0)$storage()$as_vector()))
     expect_identical(wk::validate_wk_wkb(wkb), wkb)
 
     array <- gpkg_query_narrow(con, sprintf("SELECT * FROM %s", ex))[[1]]

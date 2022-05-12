@@ -3,6 +3,6 @@
 
 ## usethis namespace: start
 #' @useDynLib gpkg, .registration = TRUE
-#' @importFrom geoarrow geoarrow_create
+#' @importFrom geoarrow geoarrow
 ## usethis namespace: end
 NULL
