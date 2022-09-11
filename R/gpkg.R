@@ -74,15 +74,24 @@ gpkg_query_narrow <- function(con, sql) {
     narrow::narrow_allocate_schema()
   })
 
-  gpkg_cpp_query(
-    con_list,
-    sql,
-    array_data,
-    schema
-  )
+  if (isTRUE(getOption("gpkg_use_nanoarrow", FALSE))) {
+    gpkg_cpp_query2(
+      con_list,
+      sql,
+      array_data,
+      schema
+    )
+  } else {
+    gpkg_cpp_query(
+      con_list,
+      sql,
+      array_data,
+      schema
+    )
+  }
 
   lapply(seq_along(sql), function(i) {
-    narrow::narrow_array(schema[[i]], array_data[[i]])
+    narrow::narrow_array(schema[[i]], array_data[[i]], validate = FALSE)
   })
 }
 

@@ -15,3 +15,7 @@ gpkg_cpp_exec <- function(con_sexp, sql) {
 gpkg_cpp_query <- function(con_sexp, sql, array_data_xptr, schema_xptr) {
   invisible(.Call(`_gpkg_gpkg_cpp_query`, con_sexp, sql, array_data_xptr, schema_xptr))
 }
+
+gpkg_cpp_query2 <- function(con_sexp, sql, array_data_xptr, schema_xptr) {
+  invisible(.Call(`_gpkg_gpkg_cpp_query2`, con_sexp, sql, array_data_xptr, schema_xptr))
+}
