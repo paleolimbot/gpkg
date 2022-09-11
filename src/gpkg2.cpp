@@ -55,8 +55,6 @@ public:
   int step() {
     int result = ArrowSQLite3ResultStep(&result_, stmt());
     if (result != NANOARROW_OK) {
-      REprintf("Query: %s\n", sql_.c_str());
-      REprintf("[%d] %s\n", result, ArrowSQLite3ResultError(&result_));
       throw GPKGError2(ArrowSQLite3ResultError(&result_));
     }
 
